@@ -2,29 +2,27 @@
 /// generates a setter, a getter, a mutter, and a mapper for that field
 #[macro_export]
 macro_rules! field {
-    ($struct:ident, $vis:vis, $name:ident, $ty:ty, $($field:ident).+) => {
+    ($vis:vis $name:ident($($field:ident).+: $ty:ty)) => {
         paste::paste! {
-            impl $struct {
-                $vis fn $name(&mut self, $name: $ty) -> &mut Self {
-                    self.$($field).+ = $name;
-                    self
-                }
+            $vis fn $name(&mut self, $name: $ty) -> &mut Self {
+                self.$($field).+ = $name;
+                self
+            }
 
-                #[allow(dead_code)]
-                $vis fn [<get_ $name>](&self) -> &$ty {
-                    &self.$($field).+
-                }
+            #[allow(dead_code)]
+            $vis fn [<get_ $name>](&self) -> &$ty {
+                &self.$($field).+
+            }
 
-                #[allow(dead_code)]
-                $vis fn [<mut_ $name>](&mut self) -> &mut $ty {
-                    &mut self.$($field).+
-                }
+            #[allow(dead_code)]
+            $vis fn [<mut_ $name>](&mut self) -> &mut $ty {
+                &mut self.$($field).+
+            }
 
-                #[allow(dead_code)]
-                $vis fn [<map_ $name>](&mut self, f: impl FnOnce(&mut $ty)) -> &mut Self {
-                    f(&mut self.$($field).+);
-                    self
-                }
+            #[allow(dead_code)]
+            $vis fn [<map_ $name>](&mut self, f: impl FnOnce(&mut $ty)) -> &mut Self {
+                f(&mut self.$($field).+);
+                self
             }
         }
     };
@@ -46,9 +44,11 @@ mod tests {
         x: f32,
     }
 
-    field!(Builder, pub, x, u32, the_x);
-    field!(Builder, pub, s, String, s);
-    field!(Builder, pub, inner, f32, inner.x);
+    impl Builder {
+        field!(pub x(the_x: u32));
+        field!(pub(crate) s(s: String));
+        field!(inner(inner.x: f32));
+    }
 
     #[test]
     fn test() {
@@ -71,6 +71,9 @@ mod tests {
 
         builder.inner(2.0);
         assert_eq!(builder.inner.x, 2.0);
+
+        builder.map_inner(|i| *i = (*i + 2.0) * 2.0);
+        assert_eq!(*builder.get_inner(), 8.0);
 
         builder.s("Hello world".to_owned());
         assert_eq!(&builder.s, "Hello world");
